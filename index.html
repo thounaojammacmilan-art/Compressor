@@ -1,0 +1,684 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0b12">
+<title>Mactech — Image Studio</title>
+<style>
+:root{--bg:#0b0b12;--panel:#151521;--line:#303047;--accent:#a78bfa;--text:#f5f3ff;--muted:#aaa7bf;--green:#6ee7b7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Arial,sans-serif}
+button,input,select{font:inherit}
+header{padding:17px 5%;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{font-size:24px;font-weight:850;letter-spacing:-1px}.logo span,h1 span{color:var(--accent)}
+.badge{font-size:10px;color:#d0c4ff;border:1px solid #50416f;border-radius:20px;padding:7px 10px}
+main{max-width:1000px;margin:30px auto;padding:0 16px}
+h1{font-size:clamp(28px,5vw,44px);letter-spacing:-1.5px;margin:0 0 8px}
+h2{font-size:19px;margin:0 0 19px}
+p{color:var(--muted);line-height:1.6}
+.panel{background:var(--panel);border:1px solid var(--line);padding:19px;border-radius:18px;margin:18px 0}
+.drop{padding:29px 12px;text-align:center;border:2px dashed #50436d;border-radius:14px;cursor:pointer;background:#191725;transition:border-color .2s,background .2s}
+.drop:hover,.drop.over{border-color:var(--accent);background:#201b31}
+button{background:var(--accent);color:#130d23;border:0;border-radius:10px;padding:12px 15px;font-weight:750;cursor:pointer;transition:transform .15s,opacity .15s}
+button:active:not(:disabled){transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.secondary{background:#29283c;color:white;border:1px solid var(--line)}
+input[type=number],input[type=text],select{width:100%;background:#0c0c15;color:white;border:1px solid var(--line);border-radius:9px;padding:11px;min-width:0}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+input:focus,select:focus{outline:2px solid #a78bfa55;border-color:var(--accent)}
+label{display:block;font-size:13px;margin-bottom:8px;color:#e2ddf5}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.field{min-width:0;margin-bottom:15px}
+.full{grid-column:1/-1}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.hint{font-size:12px}
+#viewport{display:none;position:relative;overflow:auto;max-height:70vh;min-height:220px;margin-top:15px;border:1px solid var(--line);border-radius:12px;background:#09090f;overscroll-behavior:contain}
+#canvasSpace{position:relative;margin:auto;transform-origin:top left}
+#editImage{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
+#crop{position:absolute;border:2px solid #c4b5fd;box-shadow:0 0 0 9999px #0009;cursor:move;touch-action:none;min-width:12px;min-height:12px}
+#crop:after{content:"";position:absolute;inset:33.333%;border:1px solid #ffffff70;pointer-events:none}
+.handle{position:absolute;width:19px;height:19px;background:#fff;border:3px solid #8b5cf6;border-radius:50%;z-index:2;touch-action:none}
+.tl{left:-10px;top:-10px;cursor:nwse-resize}
+.tr{right:-10px;top:-10px;cursor:nesw-resize}
+.bl{left:-10px;bottom:-10px;cursor:nesw-resize}
+.br{right:-10px;bottom:-10px;cursor:nwse-resize}
+.previewgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.preview{min-width:0;background:#0d0d15;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.preview h3{font-size:12px;padding:12px;margin:0;color:var(--muted)}
+.preview img{width:100%;height:230px;object-fit:contain;display:block;background:repeating-conic-gradient(#222 0 25%,#15151d 0 50%) 0/18px 18px}
+.meta{padding:10px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:15px 0}
+.stat{padding:13px;background:#242036;border-radius:10px;min-width:0}
+.stat small{display:block;color:var(--muted);font-size:11px;margin-bottom:7px}
+.stat strong{font-size:16px;overflow-wrap:anywhere}
+#result{display:none}
+.status{font-size:13px;overflow-wrap:anywhere}
+footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
+@media(max-width:550px){main{margin:23px auto}.panel{padding:14px}.grid{grid-template-columns:1fr}.previewgrid{grid-template-columns:1fr}.preview img{height:210px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:15px}.badge{font-size:9px}#viewport{max-height:60vh}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Mac<span>Tech</span></div>
+  <span class="badge">PRIVATE IMAGE STUDIO</span>
+</header>
+
+<main>
+<h1>Make images <span>lighter.</span></h1>
+<p>Compress, crop, zoom, resize and download your images. Everything runs locally in your browser.</p>
+
+<section class="panel">
+  <div class="drop" id="drop">
+    <div style="font-size:34px">↥</div>
+    <strong>Choose or drop your image</strong>
+    <p>JPG, PNG, WebP and other browser-supported image formats</p>
+    <button type="button" id="choose">Choose image</button>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div>
+  <p id="info" class="hint">No image selected · Maximum file size 100 MB</p>
+</section>
+
+<section class="panel">
+<h2>01 — Crop editor</h2>
+
+<div class="grid">
+  <div class="field">
+    <label for="ratio">Aspect ratio</label>
+    <select id="ratio">
+      <option value="free">Free crop</option>
+      <option value="1:1">Square · 1:1</option>
+      <option value="4:3">Landscape · 4:3</option>
+      <option value="16:9">Wide · 16:9</option>
+      <option value="3:4">Portrait · 3:4</option>
+      <option value="9:16">Story · 9:16</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Crop selection</label>
+    <button id="resetCrop" class="secondary" style="width:100%" disabled>Reset crop</button>
+  </div>
+</div>
+
+<div class="field">
+  <div class="row">
+    <label for="zoom">Editor zoom <span id="zoomText">100%</span></label>
+    <button id="zoomFit" class="secondary" disabled>Fit to screen</button>
+  </div>
+  <input id="zoom" type="range" min="50" max="300" step="10" value="100" disabled>
+  <div class="actions">
+    <button id="zoomOut" class="secondary" disabled>− Zoom out</button>
+    <button id="zoomIn" class="secondary" disabled>+ Zoom in</button>
+  </div>
+  <p class="hint">Zoom from 50% to 300%. Scroll the editor when zoomed in. Drag the selection to move it and drag any corner to resize.</p>
+</div>
+
+<div id="viewport">
+  <div id="canvasSpace">
+    <img id="editImage" alt="Image editing workspace">
+    <div id="crop">
+      <i class="handle tl" data-h="tl"></i>
+      <i class="handle tr" data-h="tr"></i>
+      <i class="handle bl" data-h="bl"></i>
+      <i class="handle br" data-h="br"></i>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:13px">
+  <span id="cropDims" class="hint">Crop dimensions: —</span>
+  <button id="applyCrop" disabled>Apply crop</button>
+</div>
+</section>
+
+<section class="panel">
+<h2>02 — Compression settings</h2>
+<div class="grid">
+  <div class="field">
+    <label for="format">Output format</label>
+    <select id="format">
+      <option value="image/webp">WebP · Recommended</option>
+      <option value="image/jpeg">JPEG / JPG</option>
+      <option value="image/png">PNG · Lossless</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="maxDim">Maximum dimension</label>
+    <select id="maxDim">
+      <option value="0">Original crop size</option>
+      <option value="2560">2560 px</option>
+      <option value="1920">1920 px</option>
+      <option value="1280">1280 px</option>
+      <option value="800">800 px</option>
+      <option value="500">500 px</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="target">Target file size</label>
+    <input type="number" id="target" min="1" step="any" placeholder="e.g. 200">
+  </div>
+  <div class="field">
+    <label for="unit">Target unit</label>
+    <select id="unit">
+      <option value="KB">KB</option>
+      <option value="MB">MB</option>
+    </select>
+  </div>
+  <div class="field full">
+    <div class="row">
+      <label for="quality">Image quality</label>
+      <strong id="qText">80%</strong>
+    </div>
+    <input type="range" id="quality" min="10" max="100" value="80">
+    <div class="row hint"><span>Smaller file</span><span>Higher quality</span></div>
+  </div>
+  <div class="field">
+    <label for="width">Custom width (px)</label>
+    <input type="number" id="width" min="1" max="12000" placeholder="Automatic">
+  </div>
+  <div class="field">
+    <label for="height">Custom height (px)</label>
+    <input type="number" id="height" min="1" max="12000" placeholder="Automatic">
+  </div>
+  <div class="field full">
+    <label for="filename">Download filename</label>
+    <input type="text" id="filename" maxlength="100" placeholder="my-compressed-image">
+    <p class="hint">Choose your own filename. The correct extension is added automatically.</p>
+  </div>
+</div>
+<button id="compress" style="width:100%" disabled>Compress image →</button>
+<p id="status" class="status" role="status" aria-live="polite"></p>
+</section>
+
+<section class="panel">
+<h2>03 — Preview & download</h2>
+<div class="previewgrid">
+  <div class="preview">
+    <h3>ORIGINAL IMAGE</h3>
+    <img id="original" alt="Original image preview">
+    <div class="meta" id="originalMeta">No image selected</div>
+  </div>
+  <div class="preview">
+    <h3>PROCESSED IMAGE</h3>
+    <img id="output" alt="Compressed image preview">
+    <div class="meta" id="outputMeta">Your result will appear here</div>
+  </div>
+</div>
+<div id="result">
+  <div class="stats">
+    <div class="stat"><small>Original size</small><strong id="before">—</strong></div>
+    <div class="stat"><small>Output size</small><strong id="after">—</strong></div>
+    <div class="stat"><small>Space saved</small><strong id="saved">—</strong></div>
+  </div>
+  <button id="download" style="width:100%">↓ Download image</button>
+  <p id="targetStatus" class="hint"></p>
+</div>
+</section>
+</main>
+<footer>Mactech · Your images stay on your device</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let img = null;
+let file = null;
+let srcURL = null;
+let outURL = null;
+let outputBlob = null;
+let appliedCrop = null;
+let rect = {x:0,y:0,w:1,h:1};
+let gesture = null;
+let zoom = 1;
+let stageWidth = 0;
+let stageHeight = 0;
+let renderToken = 0;
+
+function bytes(n) {
+  if (n < 1024) return n.toFixed(0) + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(2) + ' KB';
+  return (n / 1048576).toFixed(3) + ' MB';
+}
+
+function status(message) {
+  $('status').textContent = message;
+}
+
+function clearOutput() {
+  renderToken++;
+  if (outURL) URL.revokeObjectURL(outURL);
+  outURL = null;
+  outputBlob = null;
+  $('output').removeAttribute('src');
+  $('outputMeta').textContent = 'Your result will appear here';
+  $('result').style.display = 'none';
+}
+
+function enableEditor(enabled) {
+  ['zoom','zoomIn','zoomOut','zoomFit','resetCrop','applyCrop','compress']
+    .forEach(id => $(id).disabled = !enabled);
+}
+
+function setZoom(value) {
+  zoom = Math.max(.5, Math.min(3, value));
+  $('zoom').value = Math.round(zoom * 100);
+  $('zoomText').textContent = Math.round(zoom * 100) + '%';
+
+  if (!img) return;
+
+  const viewport = $('viewport');
+  const oldLeft = viewport.scrollLeft;
+  const oldTop = viewport.scrollTop;
+  const oldWidth = stageWidth * zoom;
+  const oldHeight = stageHeight * zoom;
+
+  const centerX = (oldLeft + viewport.clientWidth / 2) / Math.max(oldWidth,1);
+  const centerY = (oldTop + viewport.clientHeight / 2) / Math.max(oldHeight,1);
+
+  $('canvasSpace').style.width = stageWidth + 'px';
+  $('canvasSpace').style.height = stageHeight + 'px';
+  $('canvasSpace').style.transform = `scale(${zoom})`;
+
+  requestAnimationFrame(() => {
+    viewport.scrollLeft = centerX * stageWidth * zoom - viewport.clientWidth / 2;
+    viewport.scrollTop = centerY * stageHeight * zoom - viewport.clientHeight / 2;
+  });
+}
+
+function drawCrop() {
+  if (!img || !stageWidth || !stageHeight) return;
+  const c = $('crop');
+  c.style.left = (rect.x * stageWidth) + 'px';
+  c.style.top = (rect.y * stageHeight) + 'px';
+  c.style.width = (rect.w * stageWidth) + 'px';
+  c.style.height = (rect.h * stageHeight) + 'px';
+
+  $('cropDims').textContent =
+    'Crop: ' +
+    Math.max(1,Math.round(rect.w * img.naturalWidth)) +
+    ' × ' +
+    Math.max(1,Math.round(rect.h * img.naturalHeight)) +
+    ' px';
+}
+
+function resetRect() {
+  rect = {x:0,y:0,w:1,h:1};
+  drawCrop();
+}
+
+function setRatio() {
+  if (!img) return;
+
+  const value = $('ratio').value;
+  if (value === 'free') {
+    drawCrop();
+    return;
+  }
+
+  const [a,b] = value.split(':').map(Number);
+  const imageRatio = (a / b) *
+    (img.naturalHeight / img.naturalWidth);
+
+  let w = .8;
+  let h = w / imageRatio;
+
+  if (h > .8) {
+    h = .8;
+    w = h * imageRatio;
+  }
+
+  rect = {x:(1-w)/2,y:(1-h)/2,w,h};
+  drawCrop();
+}
+
+function loadImage(f) {
+  if (!f) return;
+  if (!f.type.startsWith('image/')) {
+    status('Please select a valid image file.');
+    return;
+  }
+  if (f.size > 100 * 1024 * 1024) {
+    status('Please choose an image smaller than 100 MB.');
+    return;
+  }
+
+  const url = URL.createObjectURL(f);
+  const test = new Image();
+
+  test.onload = () => {
+    if (!test.naturalWidth || !test.naturalHeight) {
+      URL.revokeObjectURL(url);
+      status('This image could not be decoded.');
+      return;
+    }
+
+    if (srcURL) URL.revokeObjectURL(srcURL);
+    srcURL = url;
+    file = f;
+    img = test;
+    appliedCrop = null;
+
+    clearOutput();
+    $('original').src = url;
+    $('editImage').src = url;
+    $('info').textContent = f.name + ' · ' + bytes(f.size);
+    $('originalMeta').textContent =
+      `${test.naturalWidth} × ${test.naturalHeight} px · ${bytes(f.size)}`;
+
+    $('filename').value = f.name.replace(/\.[^.]+$/, '') || 'pixlite-image';
+    $('width').value = '';
+    $('height').value = '';
+    $('target').value = '';
+
+    $('viewport').style.display = 'block';
+    enableEditor(true);
+    zoom = 1;
+    $('zoom').value = 100;
+    $('zoomText').textContent = '100%';
+
+    const editor = $('editImage');
+    const finish = () => {
+      const available = Math.max(200,$('viewport').clientWidth - 4);
+      const scale = Math.min(1,available / img.naturalWidth);
+      stageWidth = Math.max(1,Math.round(img.naturalWidth * scale));
+      stageHeight = Math.max(1,Math.round(img.naturalHeight * scale));
+
+      $('canvasSpace').style.width = stageWidth + 'px';
+      $('canvasSpace').style.height = stageHeight + 'px';
+      editor.style.width = stageWidth + 'px';
+      editor.style.height = stageHeight + 'px';
+      setZoom(1);
+      resetRect();
+    };
+
+    if (editor.complete && editor.naturalWidth) finish();
+    else editor.onload = finish;
+
+    status('Image ready. Edit the crop, zoom and compression settings.');
+  };
+
+  test.onerror = () => {
+    URL.revokeObjectURL(url);
+    status('Could not open this image. Try another format.');
+  };
+
+  test.src = url;
+}
+
+$('choose').onclick = () => $('file').click();
+$('drop').onclick = e => {
+  if (!e.target.closest('button')) $('file').click();
+};
+$('file').onchange = e => {
+  loadImage(e.target.files[0]);
+  e.target.value = '';
+};
+$('drop').ondragover = e => {
+  e.preventDefault();
+  $('drop').classList.add('over');
+};
+$('drop').ondragleave = () => $('drop').classList.remove('over');
+$('drop').ondrop = e => {
+  e.preventDefault();
+  $('drop').classList.remove('over');
+  loadImage(e.dataTransfer.files[0]);
+};
+
+$('zoom').oninput = e => setZoom(Number(e.target.value)/100);
+$('zoomIn').onclick = () => setZoom(zoom + .1);
+$('zoomOut').onclick = () => setZoom(zoom - .1);
+$('zoomFit').onclick = () => {
+  if (!img) return;
+  const available = $('viewport').clientWidth - 4;
+  const fit = Math.min(1,available / stageWidth);
+  setZoom(fit);
+};
+$('ratio').onchange = () => {
+  setRatio();
+  appliedCrop = null;
+  clearOutput();
+};
+$('resetCrop').onclick = () => {
+  appliedCrop = null;
+  resetRect();
+  clearOutput();
+  status('Crop selection reset.');
+};
+$('quality').oninput = () => {
+  $('qText').textContent = $('quality').value + '%';
+};
+
+/* Crop movement uses unscaled image coordinates.
+   Zoom changes only the editor viewport. */
+$('crop').addEventListener('pointerdown', e => {
+  if (!img) return;
+  e.preventDefault();
+
+  gesture = {
+    type:e.target.dataset.h || 'move',
+    x:e.clientX,
+    y:e.clientY,
+    original:{...rect}
+  };
+
+  $('crop').setPointerCapture(e.pointerId);
+});
+
+$('crop').addEventListener('pointermove', e => {
+  if (!gesture || !img) return;
+
+  const g = gesture;
+  const dx = (e.clientX - g.x) / (stageWidth * zoom);
+  const dy = (e.clientY - g.y) / (stageHeight * zoom);
+  const o = g.original;
+  let r = {...o};
+
+  if (g.type === 'move') {
+    r.x = Math.max(0,Math.min(1-o.w,o.x+dx));
+    r.y = Math.max(0,Math.min(1-o.h,o.y+dy));
+  } else {
+    let left=o.x, top=o.y, right=o.x+o.w, bottom=o.y+o.h;
+
+    if (g.type.includes('l')) left=Math.max(0,Math.min(right-.01,o.x+dx));
+    if (g.type.includes('r')) right=Math.min(1,Math.max(left+.01,o.x+o.w+dx));
+    if (g.type.includes('t')) top=Math.max(0,Math.min(bottom-.01,o.y+dy));
+    if (g.type.includes('b')) bottom=Math.min(1,Math.max(top+.01,o.y+o.h+dy));
+
+    r={x:left,y:top,w:right-left,h:bottom-top};
+
+    const value=$('ratio').value;
+    if(value!=='free'){
+      const [a,b]=value.split(':').map(Number);
+      const ar=(a/b)*(img.naturalHeight/img.naturalWidth);
+
+      if(r.w/r.h>ar) r.w=r.h*ar;
+      else r.h=r.w/ar;
+
+      if(g.type.includes('l'))r.x=o.x+o.w-r.w;
+      if(g.type.includes('t'))r.y=o.y+o.h-r.h;
+
+      r.x=Math.max(0,Math.min(1-r.w,r.x));
+      r.y=Math.max(0,Math.min(1-r.h,r.y));
+    }
+  }
+
+  rect=r;
+  drawCrop();
+});
+
+$('crop').addEventListener('pointerup', () => gesture=null);
+$('crop').addEventListener('pointercancel', () => gesture=null);
+
+$('applyCrop').onclick = () => {
+  if (!img) return;
+  appliedCrop = {...rect};
+  clearOutput();
+  status('Crop applied. Your selected area will be exported.');
+};
+
+function canvasBlob(canvas,type,quality) {
+  return new Promise((resolve,reject) => {
+    canvas.toBlob(b => {
+      if (b) resolve(b);
+      else reject(new Error('Could not encode the image.'));
+    },type,quality);
+  });
+}
+
+$('compress').onclick = async () => {
+  if (!img || !file) return;
+
+  const token = ++renderToken;
+  const btn = $('compress');
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+
+  try {
+    const r = appliedCrop || {x:0,y:0,w:1,h:1};
+
+    const sx = Math.round(r.x*img.naturalWidth);
+    const sy = Math.round(r.y*img.naturalHeight);
+    const sw = Math.max(1,Math.min(
+      img.naturalWidth-sx,Math.round(r.w*img.naturalWidth)
+    ));
+    const sh = Math.max(1,Math.min(
+      img.naturalHeight-sy,Math.round(r.h*img.naturalHeight)
+    ));
+
+    let w=sw,h=sh;
+    const max=Number($('maxDim').value);
+
+    if(max && Math.max(w,h)>max){
+      const scale=max/Math.max(w,h);
+      w=Math.round(w*scale);
+      h=Math.round(h*scale);
+    }
+
+    const iw=Number($('width').value);
+    const ih=Number($('height').value);
+
+    if(iw>0&&ih>0){w=iw;h=ih;}
+    else if(iw>0){w=iw;h=Math.round(sh*iw/sw);}
+    else if(ih>0){h=ih;w=Math.round(sw*ih/sh);}
+
+    if(!w||!h||w>12000||h>12000||w*h>40000000){
+      throw new Error('Output is too large. Use dimensions under 12,000 px and 40 megapixels.');
+    }
+
+    const canvas=document.createElement('canvas');
+    canvas.width=w;
+    canvas.height=h;
+
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('Canvas is unavailable.');
+
+    const type=$('format').value;
+    if(type==='image/jpeg'){
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,w,h);
+    }
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,w,h);
+
+    const target=Number($('target').value);
+    const unit=$('unit').value;
+    const targetBytes=target>0
+      ? target*(unit==='MB'?1048576:1024) : 0;
+
+    let best=null;
+    const quality=Number($('quality').value)/100;
+
+    if(targetBytes && type!=='image/png'){
+      let lo=.05,hi=1;
+      let closest=Infinity;
+
+      for(let i=0;i<12;i++){
+        if(token!==renderToken)return;
+
+        const mid=(lo+hi)/2;
+        const b=await canvasBlob(canvas,type,mid);
+        const diff=Math.abs(b.size-targetBytes);
+
+        if(diff<closest){
+          closest=diff;
+          best=b;
+        }
+
+        if(b.size>targetBytes)hi=mid;
+        else lo=mid;
+      }
+
+      const final=await canvasBlob(canvas,type,lo);
+      if(Math.abs(final.size-targetBytes)<closest)best=final;
+    } else {
+      best=await canvasBlob(canvas,type,quality);
+    }
+
+    if(token!==renderToken)return;
+    if(!best.type || best.type!==type){
+      throw new Error('This browser does not support that output format. Try WebP or JPEG.');
+    }
+
+    if(outURL)URL.revokeObjectURL(outURL);
+    outputBlob=best;
+    outURL=URL.createObjectURL(best);
+
+    $('output').src=outURL;
+    $('outputMeta').textContent=
+      `${w} × ${h} px · ${bytes(best.size)} · ${type.split('/')[1].toUpperCase()}`;
+
+    const diff=file.size-best.size;
+    $('before').textContent=bytes(file.size);
+    $('after').textContent=bytes(best.size);
+    $('saved').textContent=diff>=0
+      ? `${(diff/file.size*100).toFixed(1)}%`
+      : `+${(-diff/file.size*100).toFixed(1)}%`;
+
+    if(targetBytes){
+      const hit=best.size<=targetBytes;
+      $('targetStatus').textContent=
+        `Target: ${bytes(targetBytes)} · Actual: ${bytes(best.size)}. `+
+        (hit?'Target reached.':'Target not reached; try smaller dimensions or another format.');
+
+      if(type==='image/png'){
+        $('targetStatus').textContent +=
+          ' PNG uses lossless encoding; exact target sizes cannot be guaranteed.';
+      }
+    } else {
+      $('targetStatus').textContent=`Actual output size: ${bytes(best.size)}.`;
+    }
+
+    $('result').style.display='block';
+    status('Image processed successfully.');
+  } catch(e) {
+    status(e.message || 'Image processing failed.');
+  } finally {
+    if(token===renderToken){
+      btn.disabled=false;
+      btn.textContent='Compress image →';
+    }
+  }
+};
+
+$('download').onclick = () => {
+  if(!outURL || !outputBlob)return;
+
+  const type=outputBlob.type;
+  const extension=type==='image/jpeg'?'jpg':type.split('/')[1];
+
+  let name=$('filename').value.trim() || 'pixlite-compressed';
+  name=name
+    .replace(/\.[a-z0-9]{1,8}$/i,'')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g,'_')
+    .replace(/[. ]+$/g,'')
+    .slice(0,100) || 'pixlite-compressed';
+
+  const a=document.createElement('a');
+  a.href=outURL;
+  a.download=name+'.'+extension;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+</script>
+</body>
+</html>
